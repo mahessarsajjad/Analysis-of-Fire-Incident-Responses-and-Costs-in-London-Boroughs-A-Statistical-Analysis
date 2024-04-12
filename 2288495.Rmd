@@ -1,0 +1,160 @@
+---
+title: 'Sajjad Mahessar Business Statistics Mid-Term Assessment IB94X0 2022-2023 #1'
+author: 'u2288495'
+output:
+  html_document:
+    toc: yes
+    toc_depth: 3
+---
+
+```{r setup, message=FALSE}
+library(tidyverse)
+library(emmeans)
+library(gridExtra)
+library(knitr)
+options(width=100)
+```
+
+---
+
+Rename this file and the folder it is in with your student number (e.g., "1912345.Rmd")
+
+Submit this file and the knitted pdf as a zip file (e.g., 1912345.zip) _by right clicking on the folder to zip it_. That is, the zip file 1912345.zip should contain the folder 1912345 with _only_ the files 1912345.Rmd and 1912345.pdf
+
+---
+
+# Section 1
+
+```{r}
+library(tidyverse)
+library(dplyr)
+set.seed(110)
+data <- read.csv("London_Fire_data.csv")
+
+# Commented R code here!
+```
+
+# Task1: 
+Writing the code to calculate the cost of fire alarms and fire. Filtering out the incidents needed. After that the two filtered groups have been calculated.
+---
+
+```{r}
+data_fire <- filter(data, IncidentGroup =="Fire")
+sum(data_fire$Notional.Cost....,na.rm=T)
+false_alram_incident <- filter(data, IncidentGroup == "False Alarm")
+sum(false_alram_incident$Notional.Cost....,na.rm=T)
+mean(data_fire$Notional.Cost....,na.rm=T)
+mean(false_alram_incident$Notional.Cost....,na.rm=T)
+
+
+
+```
+
+# Task2 (Distribution of Response Time)
+This R code script is to find the distribution of response times for all the fires and then to find the stoppage time of the incident group
+
+
+```{r}
+ggplot(data) + geom_histogram(aes(FirstPumpArriving_AttendanceTime), binwidth= 1) + labs(x = "First Pump Arriving Time", y= "", title = "Distribution of Response Times by Fire") 
+
+ggplot(data) + geom_histogram(aes(FirstPumpArriving_AttendanceTime), binwidth= 1) + labs(x ="First Pump Arriving Time", y= "", title = "Distribution of Response Times by incident") + facet_wrap(IncidentGroup~.)
+
+#Addressing the GGPLOT error of 19019 rows. Checked if NA values were, and the response was TRUE
+nrow(data[is.na(data$FirstPumpArriving_AttendanceTime == "NA"),])
+
+```
+#Task 3(Summary of Special Service Response Time)
+```{r}
+special.service <- filter(data,IncidentGroup == "Special Service")
+
+group <- group_by(special.service,SpecialServiceType)
+
+summarize (group,Count = n(),Mean = mean(FirstPumpArriving_AttendanceTime,na.rm=T),Percentile10 = quantile(FirstPumpArriving_AttendanceTime,.1,na.rm=T),Percentile90 = quantile(FirstPumpArriving_AttendanceTime,.9,na.rm=T))
+
+
+```
+#Task 4 ($t$-testing)
+Running a two sample t-test by separating the samples
+
+```{r}
+Ealing.Greenwich <- data %>% filter(IncGeo_BoroughName == "EALING" | IncGeo_BoroughName == "GREENWICH")
+
+Ealing.Greenwich$IncGeo_BoroughName <- as.factor(Ealing.Greenwich$IncGeo_BoroughName)
+
+Ealing.Greenwich.Goup <- Ealing.Greenwich %>% group_by(IncGeo_BoroughName) %>% summarise(Mean = mean(FirstPumpArriving_AttendanceTime), sd_time = sd(FirstPumpArriving_AttendanceTime), count = n())
+
+t.test(FirstPumpArriving_AttendanceTime~IncGeo_BoroughName, data = Ealing.Greenwich)
+ 
+# comparision of the mean response times in Ealing to those in Greenwich by two sample t test by estimation.
+
+FPA_Atten <- lm(FirstPumpArriving_AttendanceTime~IncGeo_BoroughName, data = Ealing.Greenwich)
+
+FPA_Atten_emmeans <- emmeans(FPA_Atten, ~IncGeo_BoroughName)
+summary(FPA_Atten_emmeans)
+FPA_Atten_contrast <- confint(pairs(FPA_Atten_emmeans))
+summary(FPA_Atten_contrast)
+
+#Plotting Contrast
+
+grid.arrange(
+	ggplot(summary(FPA_Atten_emmeans), aes(x= IncGeo_BoroughName, y=emmean, ymin=lower.CL, ymax=upper.CL)) + 
+		geom_point() + geom_linerange() + 
+		labs(y="AvgMean.FPA_AT_emmeans", x="Locations", subtitle="Error bars are 95% CIs", title="Avg Mean Response Time") + ylim(305, 325), 
+	ggplot(FPA_Atten_contrast, aes(x=contrast, y=estimate, ymin=lower.CL, ymax=upper.CL)) + 
+		geom_point() + geom_linerange() + 
+		labs(y="Difference in AvgMean_FPA_Attendancetime", x="Contrast", subtitle="Error bars are 95% CIs", title="Difference in Avg_Mean_Response_Time") + ylim(-1,20) +
+		geom_hline(yintercept=0, lty=2),
+	ncol=2
+)
+```
+
+
+Plain English answer here!
+
+
+
+Report:
+Task 1 (The request):
+
+The summed amount for the fire alarm response time and for fire is 43059576 and astounding 61249812 for fire alarm.  The mean cost of fighting fires is 837 and mean cost for fighting false alarm is 378. This data does give the evidence that cost of false alarm is almost thrice more than three times the fire alarm but the cumulated cost for the fire alarm shows that its very high comparatively. 
+
+
+Task 2(Distribution of response time):
+The below graph shows that of the first pump that’s arriving at the fire incident. In order to determine the average response time, we can see the slope of normal distribution as its slightly below 50000, so by this analysis and data we can assume that the mean response time will be relatively close. 
+
+The graph below shows that the frequency of alarms which are fake is very high and it is quite similar to the graph of normal distribution, the actual fire alarm is low. As we can see in the graph that the special service count is low. I have also included the outliers to add more meaning to the graph and it’s understandable as to how distributed the values are.
+
+H0: No significant difference between the mean time of first time response between Ealing and Greenwich.
+
+H1: Significant difference between the mean time of of first response between Ealing and Greenwich.
+
+Task 3:
+This table summarizes the special service and the columns that are count, the 10th and 90th percentiles and the mean. This data set tells how the special service is mostly provided for Flooding (22853), Lift Release (15534) and Effecting Entry Exit (24142). With Water provision being the least Special Service Type with count of only one. The sample service has 20 sub categories of incident
+
+Task4: 
+Two sample t-test is used to measure if there is a significant difference between the mean response time for Ealing and Greenwich and also the absolute difference in the average response time of Ealing and Greenwich.
+
+A)	Testing the difference using NULL HYPOTHESIS SIGNIFICANCE TESTING(NHST):
+After the two-sample t-test we found that the t-value is 2.8542 and the degree of freedom is 19303, and p value is 0.00432 which does tell us that it is significant and to strengthen this interpretation the confidence interval is 95%, for that we work on our two ends of the limit on our sample mean, and after we are done with this upper and lower bound, these limits tell us the ranges our true population of the mean is likely to be in. We also found out that the p value is significant, and through this significance we can reject the null hypothesis and we can take the alternative hypothesis. Conclusively, the difference in mean response time is not zero.
+
+
+
+
+
+B) We used estimation in finding out the difference of mean response time in Ealing         and Greenwich. We use estimation when there is a random component to the data. The mean response time for Ealing is 317 and for Greenwich it is 311. And as discussed above, we set the limits, the limits set are 314 and 320 for Ealing and 309 and 314 for Greenwich, but as we see that the confidence interval of 95% is there, we can assume that the population mean for Ealing and Greenwich will fall in between the limits.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
